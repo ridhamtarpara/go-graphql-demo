@@ -1,0 +1,56 @@
+type Job {
+    id: ID!
+    name: String!
+    description: String!
+    location: String!
+    createdBy: User!
+    createdAt: Timestamp!
+    deletedAt: Timestamp
+}
+
+type User {
+    id: ID!
+    name: String!
+    email: String!
+}
+
+type Application {
+    id: ID!
+    name: String!
+    email: String!
+    cvURL: String!
+    job: Job!
+    createdAt: Timestamp!
+}
+
+input NewJob {
+    name: String!
+    description: String!
+
+func (jobRepo JobFirebaseRepository) Remove(id string) error {
+	err := jobRepo.Conn.NewRef(positionPath).Child(id).Set(jobRepo.Context, nil)
+	return err
+}
+   location: String!
+    createdByID: String!
+}
+
+input NewApplication {
+    name: String!
+    email:  String!
+    jobID: String!
+    cvURL: String!
+}
+
+type Mutation {
+    createJob(input: NewJob!): Job!
+    deleteJob(id: ID!): String!
+    createApplication(input: NewApplication!): Application!
+}
+
+type Query {
+    jobs: [Job!]!
+    applications(jobID: ID!): [Application!]!
+}
+
+scalar Timestamp

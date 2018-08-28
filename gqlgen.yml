@@ -1,0 +1,29 @@
+schema: schema.graphql
+
+# Let gqlgen know where to put the generated server
+exec:
+  filename: graph/generated.go
+  package: graph
+
+# Let gqlgen know where to the generated models (if any)
+model:
+  filename: models/inputs.go
+  package: models
+
+# Optional, turns on resolver stub generation
+resolver:
+  filename: resolver.go # where to write them
+  type: Resolver  # whats the resolver root implementation type called?
+
+# Tell gqlgen about any existing models you want to reuse for
+# graphql. These normally come from the db or a remote api.
+models:
+  Job:
+    model: github.com/ridhamtarpara/go-graphql-jobs/dal.Job
+  Application:
+    model: github.com/ridhamtarpara/go-graphql-jobs/dal.Application
+  User:
+    model: github.com/ridhamtarpara/go-graphql-jobs/dal.User
+  # Custom scalars point to the name without the Marshal|Unmarshal in front
+  Timestamp:
+    model: github.com/ridhamtarpara/go-graphql-jobs/dal.Timestamp

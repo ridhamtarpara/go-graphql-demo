@@ -1,0 +1,23 @@
+package: github.com/ridhamtarpara/go-graphql-jobs
+import:
+- package: firebase.google.com/go
+  version: ^3.3.0
+  subpackages:
+  - auth
+  - db
+- package: github.com/99designs/gqlgen
+  version: ^0.4.4
+  subpackages:
+  - graphql
+  - graphql/introspection
+  - handler
+- package: github.com/vektah/gqlparser
+  subpackages:
+  - ast
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/api
+  subpackages:
+  - option
+- package: zuru.tech/jobs/dal/firebase
