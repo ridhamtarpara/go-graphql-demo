@@ -1,0 +1,61 @@
+type User {
+    id: ID!
+    name: String!
+    email: String!
+}
+
+type Video {
+    id: ID!
+    name: String!
+    description: String!
+    user: User!
+    url: String!
+    createdAt: Timestamp!
+    screenshots: [Screenshot]
+}
+
+type Screenshot {
+    id: ID!
+    videoId: ID!
+    url: String!
+}
+
+type Review {
+    id: ID!
+    videoId: ID!
+    user: User!
+    description: String!
+    rating: Int!
+    createdAt: Timestamp!
+}
+
+input NewVideo {
+    name: String!
+    description: String!
+    userId: ID!
+    url: String!
+}
+
+input NewScreenshot {
+    videoId: ID!
+    url: String!
+    description: String
+}
+
+input NewReview {
+    videoId: ID!
+    title: String!
+    description: String!
+    rating: Int!
+    userId: ID!
+}
+
+type Mutation {
+    createVideo(input: NewVideo!): Video!
+}
+
+type Query {
+    Videos(limit: Int = 25, offset: Int = 0): [Video!]!
+}
+
+scalar Timestamp
