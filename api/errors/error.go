@@ -11,6 +11,7 @@ import (
 var (
 	ServerError         = GenerateError("Something went wrong! Please try again later")
 	UserNotExist        = GenerateError("User not exists")
+	UnauthorisedError        = GenerateError("You are not authorised to perform this action")
 	TimeStampError      = GenerateError("time should be a unix timestamp")
 	InternalServerError = GenerateError("internal server error")
 )

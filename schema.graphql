@@ -12,6 +12,7 @@ type Video {
     url: String!
     createdAt: Timestamp!
     screenshots: [Screenshot]
+    related(limit: Int = 25, offset: Int = 0): [Video!]!
 }
 
 type Screenshot {
@@ -51,11 +52,17 @@ input NewReview {
 }
 
 type Mutation {
-    createVideo(input: NewVideo!): Video!
+    createVideo(input: NewVideo!): Video! @isAuthenticated
 }
 
 type Query {
     Videos(limit: Int = 25, offset: Int = 0): [Video!]!
 }
 
+type Subscription {
+    videoPublished: Video!
+}
+
 scalar Timestamp
+
+directive @isAuthenticated on FIELD_DEFINITION

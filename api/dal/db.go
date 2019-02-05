@@ -10,7 +10,7 @@ import (
 const (
 	DB_USER     = "postgres"
 	DB_PASSWORD = "docker"
-	DB_NAME     = "postgres"
+	DB_NAME     = "gqldemo"
 )
 
 var once sync.Once
@@ -21,10 +21,20 @@ func Connect() (*sql.DB, error){
 	once.Do(func() {
 		dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
 			DB_USER, DB_PASSWORD, DB_NAME)
-		db, err = sql.Open("postgres", dbinfo)
+		db, _ = sql.Open("postgres", dbinfo)
+		err = db.Ping()
 	})
 	return db, err
 }
 
-// Connect with CockroachDB and open DB connection.
-var DBConn *sql.DB
+func LogAndQuery(db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
+	fmt.Println(query)
+	return db.Query(query, args...)
+}
+
+func MustExec(db *sql.DB, query string, args ...interface{}) {
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		panic(err)
+	}
+}

@@ -3,15 +3,15 @@
 package go_graphql_demo
 
 type NewReview struct {
-	VideoID     int64  `json:"videoId"`
+	VideoID     int    `json:"videoId"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Rating      int    `json:"rating"`
-	UserID      int64  `json:"userId"`
+	UserID      int    `json:"userId"`
 }
 
 type NewScreenshot struct {
-	VideoID     int64   `json:"videoId"`
+	VideoID     int     `json:"videoId"`
 	URL         string  `json:"url"`
 	Description *string `json:"description"`
 }
@@ -19,6 +19,6 @@ type NewScreenshot struct {
 type NewVideo struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	UserID      int64  `json:"userId"`
+	UserID      int    `json:"userId"`
 	URL         string `json:"url"`
 }

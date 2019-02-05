@@ -23,3 +23,5 @@ models:
     model: github.com/ridhamtarpara/go-graphql-demo/api.Video
   ID:
     model: github.com/ridhamtarpara/go-graphql-demo/api.ID
+  Timestamp:
+    model: github.com/ridhamtarpara/go-graphql-demo/api.Timestamp

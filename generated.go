@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
@@ -35,10 +36,12 @@ type ResolverRoot interface {
 	Mutation() MutationResolver
 	Query() QueryResolver
 	Review() ReviewResolver
+	Subscription() SubscriptionResolver
 	Video() VideoResolver
 }
 
 type DirectiveRoot struct {
+	IsAuthenticated func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -65,6 +68,10 @@ type ComplexityRoot struct {
 		Url     func(childComplexity int) int
 	}
 
+	Subscription struct {
+		VideoPublished func(childComplexity int) int
+	}
+
 	User struct {
 		Id    func(childComplexity int) int
 		Name  func(childComplexity int) int
@@ -79,6 +86,7 @@ type ComplexityRoot struct {
 		Url         func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
 		Screenshots func(childComplexity int) int
+		Related     func(childComplexity int, limit *int, offset *int) int
 	}
 }
 
@@ -91,10 +99,14 @@ type QueryResolver interface {
 type ReviewResolver interface {
 	User(ctx context.Context, obj *api.Review) (api.User, error)
 }
+type SubscriptionResolver interface {
+	VideoPublished(ctx context.Context) (<-chan api.Video, error)
+}
 type VideoResolver interface {
 	User(ctx context.Context, obj *api.Video) (api.User, error)
 
 	Screenshots(ctx context.Context, obj *api.Video) ([]*api.Screenshot, error)
+	Related(ctx context.Context, obj *api.Video, limit *int, offset *int) ([]api.Video, error)
 }
 
 func field_Mutation_createVideo_args(rawArgs map[string]interface{}) (map[string]interface{}, error) {
@@ -157,6 +169,40 @@ func field_Query___type_args(rawArgs map[string]interface{}) (map[string]interfa
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+
+}
+
+func field_Video_related_args(rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		var err error
+		var ptr1 int
+		if tmp != nil {
+			ptr1, err = graphql.UnmarshalInt(tmp)
+			arg0 = &ptr1
+		}
+
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["offset"]; ok {
+		var err error
+		var ptr1 int
+		if tmp != nil {
+			ptr1, err = graphql.UnmarshalInt(tmp)
+			arg1 = &ptr1
+		}
+
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg1
 	return args, nil
 
 }
@@ -291,6 +337,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Screenshot.Url(childComplexity), true
 
+	case "Subscription.videoPublished":
+		if e.complexity.Subscription.VideoPublished == nil {
+			break
+		}
+
+		return e.complexity.Subscription.VideoPublished(childComplexity), true
+
 	case "User.id":
 		if e.complexity.User.Id == nil {
 			break
@@ -361,6 +414,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Video.Screenshots(childComplexity), true
 
+	case "Video.related":
+		if e.complexity.Video.Related == nil {
+			break
+		}
+
+		args, err := field_Video_related_args(rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Video.Related(childComplexity, args["limit"].(*int), args["offset"].(*int)), true
+
 	}
 	return 0, false
 }
@@ -399,7 +464,36 @@ func (e *executableSchema) Mutation(ctx context.Context, op *ast.OperationDefini
 }
 
 func (e *executableSchema) Subscription(ctx context.Context, op *ast.OperationDefinition) func() *graphql.Response {
-	return graphql.OneShot(graphql.ErrorResponse(ctx, "subscriptions are not supported"))
+	ec := executionContext{graphql.GetRequestContext(ctx), e}
+
+	next := ec._Subscription(ctx, op.SelectionSet)
+	if ec.Errors != nil {
+		return graphql.OneShot(&graphql.Response{Data: []byte("null"), Errors: ec.Errors})
+	}
+
+	var buf bytes.Buffer
+	return func() *graphql.Response {
+		buf := ec.RequestMiddleware(ctx, func(ctx context.Context) []byte {
+			buf.Reset()
+			data := next()
+
+			if data == nil {
+				return nil
+			}
+			data.MarshalGQL(&buf)
+			return buf.Bytes()
+		})
+
+		if buf == nil {
+			return nil
+		}
+
+		return &graphql.Response{
+			Data:       buf,
+			Errors:     ec.Errors,
+			Extensions: ec.Extensions,
+		}
+	}
 }
 
 type executionContext struct {
@@ -729,7 +823,7 @@ func (ec *executionContext) _Review_id(ctx context.Context, field graphql.Collec
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int64)
+	res := resTmp.(int)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return api.MarshalID(res)
@@ -756,7 +850,7 @@ func (ec *executionContext) _Review_videoId(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int64)
+	res := resTmp.(int)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return api.MarshalID(res)
@@ -865,10 +959,10 @@ func (ec *executionContext) _Review_createdAt(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(time.Time)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return graphql.MarshalString(res)
+	return api.MarshalTimestamp(res)
 }
 
 var screenshotImplementors = []string{"Screenshot"}
@@ -932,7 +1026,7 @@ func (ec *executionContext) _Screenshot_id(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int64)
+	res := resTmp.(int)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return api.MarshalID(res)
@@ -959,7 +1053,7 @@ func (ec *executionContext) _Screenshot_videoId(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int64)
+	res := resTmp.(int)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return api.MarshalID(res)
@@ -990,6 +1084,52 @@ func (ec *executionContext) _Screenshot_url(ctx context.Context, field graphql.C
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return graphql.MarshalString(res)
+}
+
+var subscriptionImplementors = []string{"Subscription"}
+
+// nolint: gocyclo, errcheck, gas, goconst
+func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func() graphql.Marshaler {
+	fields := graphql.CollectFields(ctx, sel, subscriptionImplementors)
+	ctx = graphql.WithResolverContext(ctx, &graphql.ResolverContext{
+		Object: "Subscription",
+	})
+	if len(fields) != 1 {
+		ec.Errorf(ctx, "must subscribe to exactly one stream")
+		return nil
+	}
+
+	switch fields[0].Name {
+	case "videoPublished":
+		return ec._Subscription_videoPublished(ctx, fields[0])
+	default:
+		panic("unknown field " + strconv.Quote(fields[0].Name))
+	}
+}
+
+func (ec *executionContext) _Subscription_videoPublished(ctx context.Context, field graphql.CollectedField) func() graphql.Marshaler {
+	ctx = graphql.WithResolverContext(ctx, &graphql.ResolverContext{
+		Field: field,
+	})
+	// FIXME: subscriptions are missing request middleware stack https://github.com/99designs/gqlgen/issues/259
+	//          and Tracer stack
+	rctx := ctx
+	results, err := ec.resolvers.Subscription().VideoPublished(rctx)
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	return func() graphql.Marshaler {
+		res, ok := <-results
+		if !ok {
+			return nil
+		}
+		var out graphql.OrderedMap
+		out.Add(field.Alias, func() graphql.Marshaler {
+			return ec._Video(ctx, field.Selections, &res)
+		}())
+		return &out
+	}
 }
 
 var userImplementors = []string{"User"}
@@ -1053,7 +1193,7 @@ func (ec *executionContext) _User_id(ctx context.Context, field graphql.Collecte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int64)
+	res := resTmp.(int)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return api.MarshalID(res)
@@ -1168,6 +1308,15 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 				out.Values[i] = ec._Video_screenshots(ctx, field, obj)
 				wg.Done()
 			}(i, field)
+		case "related":
+			wg.Add(1)
+			go func(i int, field graphql.CollectedField) {
+				out.Values[i] = ec._Video_related(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					invalid = true
+				}
+				wg.Done()
+			}(i, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1200,7 +1349,7 @@ func (ec *executionContext) _Video_id(ctx context.Context, field graphql.Collect
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int64)
+	res := resTmp.(int)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return api.MarshalID(res)
@@ -1336,10 +1485,10 @@ func (ec *executionContext) _Video_createdAt(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(time.Time)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return graphql.MarshalString(res)
+	return api.MarshalTimestamp(res)
 }
 
 // nolint: vetshadow
@@ -1390,6 +1539,72 @@ func (ec *executionContext) _Video_screenshots(ctx context.Context, field graphq
 				}
 
 				return ec._Screenshot(ctx, field.Selections, res[idx1])
+			}()
+		}
+		if isLen1 {
+			f(idx1)
+		} else {
+			go f(idx1)
+		}
+
+	}
+	wg.Wait()
+	return arr1
+}
+
+// nolint: vetshadow
+func (ec *executionContext) _Video_related(ctx context.Context, field graphql.CollectedField, obj *api.Video) graphql.Marshaler {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := field_Video_related_args(rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	rctx := &graphql.ResolverContext{
+		Object: "Video",
+		Args:   args,
+		Field:  field,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Video().Related(rctx, obj, args["limit"].(*int), args["offset"].(*int))
+	})
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]api.Video)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+
+	arr1 := make(graphql.Array, len(res))
+	var wg sync.WaitGroup
+
+	isLen1 := len(res) == 1
+	if !isLen1 {
+		wg.Add(len(res))
+	}
+
+	for idx1 := range res {
+		idx1 := idx1
+		rctx := &graphql.ResolverContext{
+			Index:  &idx1,
+			Result: &res[idx1],
+		}
+		ctx := graphql.WithResolverContext(ctx, rctx)
+		f := func(idx1 int) {
+			if !isLen1 {
+				defer wg.Done()
+			}
+			arr1[idx1] = func() graphql.Marshaler {
+
+				return ec._Video(ctx, field.Selections, &res[idx1])
 			}()
 		}
 		if isLen1 {
@@ -2968,6 +3183,18 @@ func (ec *executionContext) FieldMiddleware(ctx context.Context, obj interface{}
 			ret = nil
 		}
 	}()
+	rctx := graphql.GetResolverContext(ctx)
+	for _, d := range rctx.Field.Definition.Directives {
+		switch d.Name {
+		case "isAuthenticated":
+			if ec.directives.IsAuthenticated != nil {
+				n := next
+				next = func(ctx context.Context) (interface{}, error) {
+					return ec.directives.IsAuthenticated(ctx, obj, n)
+				}
+			}
+		}
+	}
 	res, err := ec.ResolverMiddleware(ctx, next)
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3005,6 +3232,7 @@ type Video {
     url: String!
     createdAt: Timestamp!
     screenshots: [Screenshot]
+    related(limit: Int = 25, offset: Int = 0): [Video!]!
 }
 
 type Screenshot {
@@ -3044,13 +3272,18 @@ input NewReview {
 }
 
 type Mutation {
-    createVideo(input: NewVideo!): Video!
+    createVideo(input: NewVideo!): Video! @isAuthenticated
 }
 
 type Query {
     Videos(limit: Int = 25, offset: Int = 0): [Video!]!
 }
 
+type Subscription {
+    videoPublished: Video!
+}
+
 scalar Timestamp
-`},
+
+directive @isAuthenticated on FIELD_DEFINITION`},
 )
