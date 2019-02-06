@@ -8,6 +8,7 @@ import (
 	"github.com/markbates/going/randx"
 	"github.com/ridhamtarpara/go-graphql-demo/api"
 	"github.com/ridhamtarpara/go-graphql-demo/api/dal"
+	"github.com/ridhamtarpara/go-graphql-demo/api/dataloaders"
 	"github.com/ridhamtarpara/go-graphql-demo/api/errors"
 	"strconv"
 	"time"
@@ -139,23 +140,23 @@ type videoResolver struct{ *Resolver }
 func (r *videoResolver) User(ctx context.Context, obj *api.Video) (api.User, error) {
 	// Raw
 
-	rows, _ := dal.LogAndQuery(r.db, "SELECT id, name, email FROM users where id = $1", obj.UserID)
-	defer rows.Close()
-
-	if !rows.Next() {
-		return api.User{}, nil
-	}
-	var user api.User
-	if err := rows.Scan(&user.ID, &user.Name, &user.Email); err != nil {
-		errors.DebugPrintf(err)
-		return api.User{}, errors.InternalServerError
-	}
-
-	return user, nil
+	//rows, _ := dal.LogAndQuery(r.db, "SELECT id, name, email FROM users where id = $1", obj.UserID)
+	//defer rows.Close()
+	//
+	//if !rows.Next() {
+	//	return api.User{}, nil
+	//}
+	//var user api.User
+	//if err := rows.Scan(&user.ID, &user.Name, &user.Email); err != nil {
+	//	errors.DebugPrintf(err)
+	//	return api.User{}, errors.InternalServerError
+	//}
+	//
+	//return user, nil
 
 	// DataLoader
-	//user, err := ctx.Value(dataloaders.CtxKey).(*dataloaders.UserLoader).Load(obj.UserID)
-	//return *user, err
+	user, err := ctx.Value(dataloaders.CtxKey).(*dataloaders.UserLoader).Load(obj.UserID)
+	return *user, err
 	//return api.User{}, nil
 }
 func (r *videoResolver) Screenshots(ctx context.Context, obj *api.Video) ([]*api.Screenshot, error) {
