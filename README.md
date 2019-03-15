@@ -1,8 +1,7 @@
 # go-graphql-example
 
 Read more at: 
-1. [Deep Dive Into GraphQL With Golang Part I: Configuration, Mutations, Queries, and Subscriptions]()
-2. [Deep Dive Into GraphQL With Golang Part II: Authentication, Dataloaders, and Query Complexity]()
+1. [Deep Dive Into GraphQL With Golang](https://medium.freecodecamp.org/deep-dive-into-graphql-with-golang-d3e02a429ac3)
 
 #### Getting Started
 1. Clone the repo  `git clone https://github.com/ridhamtarpara/go-graphql-demo.git`
