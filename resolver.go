@@ -86,11 +86,11 @@ func (r *mutationResolver) CreateVideo(ctx context.Context, input NewVideo) (api
 
 	rows, err := dal.LogAndQuery(r.db, "INSERT INTO videos (name, description, url, user_id, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
 		input.Name, input.Description, input.URL, userID, newVideo.CreatedAt)
-	defer rows.Close()
-
 	if err != nil || !rows.Next() {
 		return api.Video{}, err
 	}
+	defer rows.Close()
+	
 	if err := rows.Scan(&newVideo.ID); err != nil {
 		errors.DebugPrintf(err)
 		if errors.IsForeignKeyError(err) {
